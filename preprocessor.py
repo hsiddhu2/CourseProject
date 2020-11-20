@@ -23,18 +23,18 @@ def getBushGoreXMLs():
                 for paragraphs in root.findall('body/body.content/block/p'):
                     body_para = paragraphs.text
                     if body_para is not None:
-                        if re.match(r'\bGore(?!\.?\d)', body_para):
+                        if re.search(r'\bGore(?!\.?\d) | \bBush(?!\.?\d)', body_para):
                             publish_date = getdate(root)
                             content = publish_date + ': ' + body_para
                             with open("Data/BushGore.txt", "a") as f:
-                                f.write(content+ "\n")
+                                f.write(content + "\n")
                             shutil.copy(fullname, 'Data/BushGore')
-                        if re.match(r'\bBush(?!\.?\d)', body_para):
-                            publish_date = getdate(root)
-                            content = publish_date + ': ' + body_para
-                            with open("Data/BushGore.txt", "a") as f:
-                                f.write(content+ "\n")
-                            shutil.copy(fullname, 'Data/BushGore')
+                        # if re.search(r'\bBush(?!\.?\d)', body_para):
+                        #     publish_date = getdate(root)
+                        #     content = publish_date + ': ' + body_para
+                        #     with open("Data/BushGore.txt", "a") as f:
+                        #         f.write(content+ "\n")
+                        #     shutil.copy(fullname, 'Data/BushGore')
 
 
 def main():
