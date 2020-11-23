@@ -6,26 +6,29 @@ import xml
 import xml.etree.ElementTree as ET
 import xmlformatter
 
+
 def getdate(root):
     day = root.find(".//head/meta[@name='publication_day_of_month']").attrib["content"]
     month = root.find(".//head/meta[@name='publication_month']").attrib["content"]
     year = root.find(".//head/meta[@name='publication_year']").attrib["content"]
-    publish_date = month + '-' + day + '-' + year
+    publish_date = month + day + year
     return publish_date
 
 
 def writeXML(publish_date, body_para):
-    output_XML = ET.parse("Data/BushGoreXML.xml")
+    output_XML = ET.parse("Data/BushGore2.xml")
     rootNode = output_XML.getroot()
+    entries = output_XML.find("entries")
 
-    date = ET.SubElement(rootNode, "date")
-    textdata = ET.SubElement(rootNode, "textdata")
+    entry = ET.SubElement(entries, "entry")
+    date = ET.SubElement(entry, "date")
+    textdata = ET.SubElement(entry, "textdata")
 
     date.text = publish_date
     textdata.text = body_para
 
     tree = ET.ElementTree(rootNode)
-    tree.write("Data/BushGoreXML.xml", "utf-8")
+    tree.write("Data/BushGore2.xml", "utf-8")
 
 
 def getBushGoreXMLs():
@@ -48,19 +51,15 @@ def getBushGoreXMLs():
 
 def createOutputXML():
     root = ET.Element("presidential")
+    ET.SubElement(root, "entries")
     tree = ET.ElementTree(root)
-    tree.write("Data/BushGoreXML.xml")
 
-
-def formatXML():
-    formatter = xmlformatter.Formatter(indent="1", indent_char="\t", encoding_output="ISO-8859-1", preserve=["literal"])
-    formatter.format_file("Data/BushGore.xml")
+    tree.write("Data/BushGore2.xml")
 
 
 def main():
     createOutputXML()
     getBushGoreXMLs()
-    formatXML()
 
 
 if __name__ == "__main__":
