@@ -10,6 +10,8 @@ def preprocessData():
     tokenizer = RegexpTokenizer(r'\w+')
     f = open("Data/BushGore.txt", "r")
     documents = []
+    datedocument = {}
+    i = 0
     for x in f:
         line = x
         dateline = line.split(":")
