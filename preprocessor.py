@@ -45,8 +45,8 @@ def getBushGoreXMLs():
                             content = publish_date + ': ' + body_para
                             with open("Data/BushGore.txt", "a") as f:
                                 f.write(content + "\n")
-                            shutil.copy(fullname, 'Data/BushGore')
-                            writeXML(publish_date, body_para)
+                            # shutil.copy(fullname, 'Data/BushGore')
+                            # writeXML(publish_date, body_para)
 
 
 def createOutputXML():
@@ -57,7 +57,12 @@ def createOutputXML():
     tree.write("Data/BushGore2.xml")
 
 
+def refreshTextFile():
+    open( 'Data/BushGore.txt', 'w' ).close()
+
+
 def main():
+    refreshTextFile()
     createOutputXML()
     getBushGoreXMLs()
 
