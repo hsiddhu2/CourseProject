@@ -26,7 +26,7 @@ def preprocessData():
         i=i+1
     dictionary = corpora.Dictionary(documents)
     corpus = [dictionary.doc2bow(remove_short(remove_stopwords(text),minsize = 2)) for text in documents]
-    return corpus,datedocument
+    return corpus,datedocument,dictionary
 
 def readStockPrice():
     goreNormalizedProbability = {}
@@ -40,21 +40,20 @@ def readStockPrice():
             goreNormalizedProbability.update( {date: normProb} )
     return goreNormalizedProbability
 
-def runLda(corpus,ntopics):
+def runLda(corpus,ntopics,dictionary):
     model = gensim.models.LdaModel(corpus, id2word=dictionary,
                                alpha='auto',
                                num_topics=ntopics,
                                passes=5)
     return model
     
-def calculateTs(model,datedocument,number_topics):
+def calculateTs(model,datedocument,number_topics,corpus):
     dates = datedocument.keys()
     doc_ids = []
     topics_str = []
     i = 0
     TS = np.zeros((len(dates),number_topics))
     i = 0
-    print(model.get_document_topics(corpus)[70])
     for x in dates:
         doc_ids = datedocument.get(x)
         for k in doc_ids:
@@ -67,14 +66,15 @@ def calculateTs(model,datedocument,number_topics):
     return TS
                       
 def main():
-    corpus,datedocument = preprocessData()
+    corpus,datedocument,dictionary = preprocessData()
+    #print(datedocument)
     goreNormProbability = readStockPrice()
-    print( goreNormProbability )
+    #print( goreNormProbability )
     number_topics = 10
-    model = runLda(corpus,number_topics)
+    model = runLda(corpus,number_topics,dictionary)
     print(model.get_topics())
     print(model.print_topics())
-    TS = calculateTs(model,datedocument,number_topics)
+    TS = calculateTs(model,datedocument,number_topics,corpus)
     print(TS)
     
 
