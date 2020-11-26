@@ -1,3 +1,4 @@
+import datetime
 import os
 import fnmatch
 import re
@@ -11,7 +12,7 @@ def getdate(root):
     day = root.find(".//head/meta[@name='publication_day_of_month']").attrib["content"]
     month = root.find(".//head/meta[@name='publication_month']").attrib["content"]
     year = root.find(".//head/meta[@name='publication_year']").attrib["content"]
-    publish_date = month + day + year
+    publish_date = month.zfill(2)+'/'+day.zfill(2)+'/'+'00'
     return publish_date
 
 
@@ -37,14 +38,17 @@ def getBushGoreXMLs():
             if fnmatch.fnmatch(file, '*.xml'):
                 fullname = os.path.join(path, file)
                 root = ET.parse(fullname).getroot()
-                for paragraphs in root.findall('body/body.content/block/p'):
-                    body_para = paragraphs.text
-                    if body_para is not None:
-                        if re.search(r'\bGore(?!\.?\d) | \bBush(?!\.?\d)', body_para):
-                            publish_date = getdate(root)
-                            content = publish_date + ': ' + body_para
-                            with open("Data/BushGore.txt", "a") as f:
-                                f.write(content + "\n")
+                for block in root.findall('body/body.content/block'):
+                    block_type = block.attrib['class']
+                    if block_type == 'full_text':
+                        for para in block.findall('p'):
+                            body_para = para.text
+                            if body_para is not None:
+                                if re.search(r'\bGore(?!\.?\d) | \bBush(?!\.?\d)', body_para):
+                                    publish_date = getdate(root)
+                                    content = str(publish_date) + ': ' + body_para
+                                    with open("Data/BushGore.txt", "a") as f:
+                                        f.write(content + "\n")
                             # shutil.copy(fullname, 'Data/BushGore')
                             # writeXML(publish_date, body_para)
 
