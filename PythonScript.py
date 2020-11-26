@@ -16,15 +16,21 @@ def preprocessData():
         line = x
         dateline = line.split(":")
         document = dateline[1].lower()
-        documents.append(tokenizer.tokenize(document))
+        duplicate = documents.count(tokenizer.tokenize(document))
+        
         arr = []
         date = dateline[0]
         if datedocument.get(date)!=None:
             arr = datedocument.get(date)
         arr.append(i)
         datedocument[date] = arr
-        i=i+1
+        if duplicate == 0:
+            if "bush" in document or "gore" in document:
+                documents.append(tokenizer.tokenize(document))
+                i=i+1
+        
     dictionary = corpora.Dictionary(documents)
+    #print(len(documents))
     corpus = [dictionary.doc2bow(remove_short(remove_stopwords(text),minsize = 2)) for text in documents]
     return corpus,datedocument,dictionary
 
@@ -67,6 +73,7 @@ def calculateTs(model,datedocument,number_topics,corpus):
                       
 def main():
     corpus,datedocument,dictionary = preprocessData()
+    #print(len(corpus))
     #print(datedocument)
     goreNormProbability = readStockPrice()
     #print( goreNormProbability )
@@ -76,6 +83,7 @@ def main():
     print(model.print_topics())
     TS = calculateTs(model,datedocument,number_topics,corpus)
     print(TS)
+    runGrangerTest()
     
 
 if __name__ == "__main__":
