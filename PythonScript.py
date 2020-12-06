@@ -10,6 +10,8 @@ from statsmodels.tsa.stattools import grangercausalitytests
 from gensim.parsing.preprocessing import preprocess_documents
 from gensim.parsing.preprocessing import remove_stopwords, preprocess_string,strip_punctuation,strip_numeric,stem_text,strip_short
 from scipy import stats
+import math
+import matplotlib.pyplot as plt
 
 
 def preprocessData():
@@ -32,17 +34,12 @@ def preprocessData():
         preprossed_document = preprocess_string(document,filters=filter)
         duplicate = documents.count(preprossed_document)
         if duplicate == 0:
-            #documents.append(tokenizer.tokenize(document))
             documents.append(preprossed_document)
-            i=i+1
+            i = i+1
         
     dictionary = corpora.Dictionary(documents)
-    #dict = dictionary.token2id
-    #print(dictionary.token2id)
-    #print(len(documents))
-    #print(dictionary)
     corpus = [dictionary.doc2bow(text) for text in documents]
-    return corpus,datedocument,dictionary
+    return corpus , datedocument,dictionary
 
 def readStockPrice():
     goreNormalizedProbability = {}
@@ -56,18 +53,15 @@ def readStockPrice():
             goreNormalizedProbability.update( {date: normProb} )
     return goreNormalizedProbability
 
-def runLda(corpus,ntopics,dictionary,prior):
+def runLda(corpus,ntopics,dictionary,prior,mu):
     model = gensim.models.LdaModel(corpus, id2word=dictionary,
                                alpha='auto',eta = prior,
                                num_topics=ntopics,
-                               passes=5)
+                               passes=5,decay = mu)
     return model
-    
+
 def calculateTs(model,datedocument,number_topics,corpus):
     dates = datedocument.keys()
-    doc_ids = []
-    topics_str = []
-    i = 0
     TS = np.zeros((len(dates),number_topics))
     i = 0
     for x in dates:
@@ -90,10 +84,8 @@ def calculatePearsonCorelation(x,y):
 
 def isSignificant(arr):
     result = runGrangerTest(arr)
-    max_lag = 5
     lag_pvalue = []
     alpha = 0.05
-    alpha1 = 0.95
     for i in range(1,6):
         lag = result.get(i)
         test = lag[0]
@@ -129,14 +121,11 @@ def findSignificantTopics(TS,goreNormProbability,datedocument,number_topics):
         if pvalue!=None and lag!=None:
             total_significant_topic = total_significant_topic + 1
             significantTopics.append(i)
-        else:
-            print("Topic "+str(i)+" is not significant.")
     print("Found "+str(total_significant_topic)+" significant topics")
     return significantTopics
 
 def calculateWS(corpus,datedocument,vocabulary_size):
     dates = datedocument.keys()
-    doc_ids = []
     WS = np.zeros((len(dates),vocabulary_size))
     z = 0
     for x in dates:
@@ -151,110 +140,25 @@ def calculateWS(corpus,datedocument,vocabulary_size):
         z = z+1
     return WS
         
+
 def calculatePrior(WS,significantTopics,model,datedocument,goreNormProbability,vocabulary_size,number_topics,dictionary):
     arr = np.zeros((len(WS[:,0]),2))
     pricearr = []
-    num_words = 200
-    probM = 0.4
-    top_words = []
-
-    top_significant_words=[]
-    prior_list = []
-    topic_index = 0
-    for x in datedocument:
-        price = goreNormProbability.get(x)
-        if price == None:
-            price = 0.5
-        pricearr.append(price)
-    arr[:,0] = pricearr
-    for i in significantTopics:
-        total_prob = 0
-        top_words = []
-        top_word_tuple = model.get_topic_terms(i,100)
-        for x in top_word_tuple:
-            prob = x[1]
-            total_prob = total_prob + prob
-            if total_prob <= probM:
-                top_words.append(x[0])
-        positive_words = []
-        negative_words =[]
-        for y in top_words:
-            arr[:,1] = WS[:,y]
-            pvalue,lag = isSignificant(arr)
-            if pvalue!=None and lag!=None:
-                pearsonCorelation = calculatePearsonCorelation(pricearr,WS[:,y])
-                word_prob = (y,pvalue)
-                if(pearsonCorelation[0]<0):
-                    negative_words.append(word_prob)
-                else:
-                    positive_words.append(word_prob)
-        total_sig_words = len(negative_words)+len(positive_words)
-        print("Total significant words in "+str(i)+" are:"+str(total_sig_words))
-        print("Total positive words:"+str(len(positive_words)))
-        print("Total negative words:"+str(len(negative_words)))
-        topic_Word_prior = np.zeros((vocabulary_size))
-        topic_Word_prior1 = np.zeros((vocabulary_size))
-        denom = 0
-        if len(positive_words)!=0 and len(positive_words)/total_sig_words < 0.1:
-            for x in negative_words:
-                print(dictionary.id2token[x[0]])
-                word_prior = (100 *(1- x[1])) - 95
-                topic_Word_prior[x[0]] =  word_prior
-                denom = denom + word_prior
-            prior_list.append(topic_Word_prior/word_prior)
-        elif len(positive_words)!=0 and len(negative_words)/total_sig_words < 0.1 :
-            for x in positive_words:
-                print(dictionary.id2token[x[0]])
-                word_prior = (100 *(1- x[1])) - 95
-                topic_Word_prior[x[0]] =  word_prior
-                denom = denom + word_prior
-            prior_list.append(topic_Word_prior/word_prior)
-        elif len(negative_words)==0 and len(positive_words)==0:
-            print("No significant words found")
-        else:
-            for x in negative_words:
-                print(dictionary.id2token[x[0]])
-                word_prior = (100 *(1- x[1])) - 95
-                topic_Word_prior[x[0]] =  word_prior
-                denom = denom + word_prior
-            prior_list.append(topic_Word_prior/word_prior)
-            denom = 0
-            for x in positive_words:
-                print(dictionary.id2token[x[0]])
-                word_prior = (100 *(1- x[1])) - 95
-                topic_Word_prior[x[0]] =  word_prior
-                denom = denom + word_prior
-            prior_list.append(topic_Word_prior/word_prior)
-    #prior = np.zeros((len(prior_list),vocabulary_size))
-    prior = np.zeros((number_topics,vocabulary_size))
-    j = 0
-    for x in prior_list:
-        for i in range(len(x)):
-            prior[j,i] = x[i]
-        j = j+1
-        
-    return prior
-
-def calculatePrior1(WS,significantTopics,model,datedocument,goreNormProbability,vocabulary_size,number_topics,dictionary):
-    arr = np.zeros((len(WS[:,0]),2))
-    pricearr = []
-    num_words = 200
     probM = 0.1
-    top_words = []
-
-    top_significant_words=[]
     prior_list = []
-    topic_index = 0
     for x in datedocument:
         price = goreNormProbability.get(x)
         if price == None:
             price = 0.5
         pricearr.append(price)
     arr[:,0] = pricearr
+    total_purity = 0
+    sig_topic= 0
+    total_confidence = 0
+    total_significant_words = 0
     for i in significantTopics:
         print(model.print_topic(i))
         total_prob = 0
-        top_words = []
         top_word_tuple = model.get_topic_terms(i,vocabulary_size)
         positive_words = []
         negative_words =[]
@@ -266,6 +170,7 @@ def calculatePrior1(WS,significantTopics,model,datedocument,goreNormProbability,
                 prob = y[1]
                 total_prob = total_prob + prob
                 if total_prob <= probM:
+                    total_confidence = total_confidence + ((1 - prob) * 100)
                     pearsonCorelation = calculatePearsonCorelation(pricearr,WS[:,id])
                     word_prob = (id,pvalue)
                     if(pearsonCorelation[0]<0):
@@ -275,43 +180,54 @@ def calculatePrior1(WS,significantTopics,model,datedocument,goreNormProbability,
                 else:
                     break
         total_sig_words = len(negative_words)+len(positive_words)
-        print("Total significant words in "+str(i)+" are:"+str(total_sig_words))
+        total_significant_words = total_significant_words + total_sig_words;
+        print("Total significant words in topic "+str(i)+" are:"+str(total_sig_words))
         print("Total positive words:"+str(len(positive_words)))
         print("Total negative words:"+str(len(negative_words)))
         topic_Word_prior = np.zeros((vocabulary_size))
-        topic_Word_prior1 = np.zeros((vocabulary_size))
         denom = 0
-        if len(positive_words)!=0 and len(positive_words)/total_sig_words < 0.1:
-            for x in negative_words:
-                print(dictionary.id2token[x[0]])
-                word_prior = (100 *(1-x[1])) - 95
-                topic_Word_prior[x[0]] =  word_prior
-                denom = denom + word_prior
-            prior_list.append(topic_Word_prior/word_prior)
-        elif len(positive_words)!=0 and len(negative_words)/total_sig_words < 0.1 :
-            for x in positive_words:
-                print(dictionary.id2token[x[0]])
-                word_prior = (100 *(1-x[1])) - 95
-                topic_Word_prior[x[0]] =  word_prior
-                denom = denom + word_prior
-            prior_list.append(topic_Word_prior/word_prior)
-        elif len(negative_words)==0 and len(positive_words)==0:
-            print("No significant words found")
-        else:
-            for x in negative_words:
-                print(dictionary.id2token[x[0]])
-                word_prior = (100 *(1-x[1])) - 95
-                topic_Word_prior[x[0]] =  word_prior
-                denom = denom + word_prior
-            prior_list.append(topic_Word_prior/word_prior)
-            denom = 0
-            for x in positive_words:
-                print(dictionary.id2token[x[0]])
-                word_prior = (100 *(1-x[1])) - 95
-                topic_Word_prior[x[0]] =  word_prior
-                denom = denom + word_prior
-            prior_list.append(topic_Word_prior/word_prior)
-    #prior = np.zeros((len(prior_list),vocabulary_size))
+        if total_sig_words != 0:
+            nprob = len(negative_words) / total_sig_words
+            pprob = len(positive_words)/ total_sig_words
+            if nprob == 0:
+                entropy = pprob * math.log(pprob)
+            elif pprob == 0:
+                entropy = nprob * math.log(nprob)
+            else:
+                entropy = (nprob * math.log(nprob)) + (pprob * math.log(pprob))
+            purity = 100 + (100 * entropy)
+            total_purity = total_purity + purity
+            sig_topic = sig_topic + 1
+            print("Purity of topic "+str(i)+" is:"+str(purity))
+            if len(positive_words)!=0 and len(positive_words)/total_sig_words < 0.1:
+                for x in negative_words:
+                    word_prior = (100 *(1-x[1])) - 95
+                    topic_Word_prior[x[0]] =  word_prior
+                    denom = denom + word_prior
+                prior_list.append(topic_Word_prior/word_prior)
+            elif len(positive_words)!=0 and len(negative_words)/total_sig_words < 0.1 :
+                for x in positive_words:
+                    word_prior = (100 *(1-x[1])) - 95
+                    topic_Word_prior[x[0]] =  word_prior
+                    denom = denom + word_prior
+                prior_list.append(topic_Word_prior/word_prior)
+            elif len(negative_words)==0 and len(positive_words)==0:
+                print("No significant words found")
+            else:
+                for x in negative_words:
+                    word_prior = (100 *(1-x[1])) - 95
+                    topic_Word_prior[x[0]] =  word_prior
+                    denom = denom + word_prior
+                prior_list.append(topic_Word_prior/word_prior)
+                denom = 0
+                for x in positive_words:
+                    word_prior = (100 *(1-x[1])) - 95
+                    topic_Word_prior[x[0]] =  word_prior
+                    denom = denom + word_prior
+                prior_list.append(topic_Word_prior/word_prior)
+    avg_purity = total_purity/sig_topic
+    avg_confidence = total_confidence / total_significant_words
+    print("Average Purity:"+str(avg_purity))
     prior = np.zeros((number_topics,vocabulary_size))
     j = 0
     for x in prior_list:
@@ -319,36 +235,112 @@ def calculatePrior1(WS,significantTopics,model,datedocument,goreNormProbability,
             prior[j,i] = x[i]
         j = j+1
         
-    return prior
+    return prior,avg_purity,avg_confidence
 
             
 def main():
     corpus,datedocument,dictionary = preprocessData()
     print(len(corpus))
-    #print(corpus.get_texts())
-    #print(datedocument)
     goreNormProbability = readStockPrice()
-    #print( goreNormProbability )
-    number_topics = 10
     vocabulary_size = len(dictionary)
     print("Vocabulary Size:"+str(vocabulary_size))
-    prior = 0
-    for i in range(5):
-        print("---Iteration:"+str(i)+"---")
-        print("Number of topics:"+str(number_topics))
-        model = runLda(corpus,number_topics,dictionary,prior)
-        print(model.print_topics(30))
-        topic_word_prob = model.get_topics()
-        TS = calculateTs(model,datedocument,number_topics,corpus)
-        print(TS)
-        WS = calculateWS(corpus,datedocument,vocabulary_size)
-        print(WS)
-        significantTopics = findSignificantTopics(TS,goreNormProbability,datedocument,number_topics)
-        print("-----Significant Topics are----")
-        print(significantTopics)
-        if number_topics<30:
-            number_topics = number_topics + 10
-        prior = calculatePrior1(WS,significantTopics,model,datedocument,goreNormProbability,vocabulary_size,number_topics,dictionary)
+    mu = 0.6
+    print("----------For varying Mu values----------")
+    for j in range(5):
+        avg_purity_list = []
+        iteration_list = []
+        avg_conf_list = []
+        number_topics = 10
+        prior = 0
+        print("-----For Mu:"+str(mu)+"-----")
+        for i in range(5):
+            itr = i + 1
+            iteration_list.append(itr)
+            print("---Iteration:"+str(i+1)+"---")
+            print("Number of topics:"+str(number_topics))
+            model = runLda(corpus,number_topics,dictionary,prior,mu)
+            topic_word_prob = model.get_topics()
+            TS = calculateTs(model,datedocument,number_topics,corpus)
+            #print(TS)
+            WS = calculateWS(corpus,datedocument,vocabulary_size)
+            #print(WS)
+            significantTopics = findSignificantTopics(TS,goreNormProbability,datedocument,number_topics)
+            print("-----Significant Topics are----")
+            print(significantTopics)
+            if number_topics<30:
+                number_topics = number_topics + 10
+            prior,avg_purity,avg_confidence = calculatePrior(WS,significantTopics,model,datedocument,goreNormProbability,vocabulary_size,number_topics,dictionary)
+            avg_purity_list.append(avg_purity)
+            avg_conf_list.append(avg_confidence)
+        plt.subplot(2, 2, 1)
+        plt.plot(iteration_list,avg_purity_list,marker='o',label = "Mu:"+str(mu))
+        plt.subplot(2, 2, 2)
+        plt.plot(iteration_list, avg_conf_list, marker='o', label="Mu:" + str(mu))
+        mu = mu + 0.1
+    plt.subplot(2, 2, 1)
+    plt.title('Avg. Purity for Different Mu')
+    plt.ylabel('Avg. Purity')
+    plt.xlabel('Iteration')
+    plt.legend()
+    plt.subplot(2, 2, 2)
+    plt.title('Avg. Causality Confidence for Different Mu')
+    plt.ylabel('Avg. Causality Confidence')
+    plt.xlabel('Iteration')
+    plt.legend()
+    mu = 1
+    print("----------For varying topic numbers----------")
+    for j in range(5):
+        avg_purity_list = []
+        iteration_list = []
+        avg_conf_list = []
+        if j == 4:
+            number_topics = 10
+        else:
+            number_topics = (j+1) * 10
+        prior = 0
+        print("-----For Mu:"+str(mu)+"-----")
+        for i in range(5):
+            itr = i + 1
+            iteration_list.append(itr)
+            print("---Iteration:"+str(i+1)+"---")
+            print("Number of topics:"+str(number_topics))
+            model = runLda(corpus,number_topics,dictionary,prior,mu)
+            topic_word_prob = model.get_topics()
+            TS = calculateTs(model,datedocument,number_topics,corpus)
+            #print(TS)
+            WS = calculateWS(corpus,datedocument,vocabulary_size)
+            #print(WS)
+            significantTopics = findSignificantTopics(TS,goreNormProbability,datedocument,number_topics)
+            print("-----Significant Topics are-----")
+            print(significantTopics)
+            if j == 4:
+                if number_topics<30:
+                    number_topics = number_topics + 10
+            prior,avg_purity,avg_confidence = calculatePrior(WS,significantTopics,model,datedocument,goreNormProbability,vocabulary_size,number_topics,dictionary)
+            avg_purity_list.append(avg_purity)
+            avg_conf_list.append(avg_confidence)
+        if j == 5:
+            plt.subplot(2, 2, 3)
+            plt.plot(iteration_list, avg_purity_list, marker='o', label="tn:var tn")
+            plt.subplot(2, 2, 4)
+            plt.plot(iteration_list, avg_conf_list, marker='o', label="tn:var tn")
+        else:
+            plt.subplot(2, 2, 3)
+            plt.plot(iteration_list,avg_purity_list,marker='o',label = "tn:"+str(number_topics))
+            plt.subplot(2, 2, 4)
+            plt.plot(iteration_list, avg_conf_list, marker='o', label="tn:" + str(number_topics))
+    plt.subplot(2, 2, 3)
+    plt.title('Avg. Purity for Different tn')
+    plt.ylabel('Avg. Purity')
+    plt.xlabel('Iteration')
+    plt.legend()
+    plt.subplot(2, 2, 4)
+    plt.title('Avg. Causality Confidence for Different tn')
+    plt.ylabel('Avg. Causality Confidence ')
+    plt.xlabel('Iteration')
+    plt.legend()
+    plt.show()
+
         
         
 
