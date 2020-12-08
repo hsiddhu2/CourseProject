@@ -169,7 +169,7 @@ def calculatePrior(WS,significantTopics,model,datedocument,goreNormProbability,v
             if pvalue!=None and lag!=None:
                 prob = y[1]
                 total_prob = total_prob + prob
-                if total_prob <= probM:
+                if total_prob <= probM and dictionary[id]!="bush" and dictionary[id]!="gore" and dictionary[id]!="mr":
                     total_confidence = total_confidence + ((1 - prob) * 100)
                     pearsonCorelation = calculatePearsonCorelation(pricearr,WS[:,id])
                     word_prob = (id,pvalue)
@@ -296,37 +296,42 @@ def main():
         if j == 4:
             number_topics = 10
         else:
-            number_topics = (j+1) * 10
+            number_topics = (j + 1) * 10
         prior = 0
-        print("-----For Mu:"+str(mu)+"-----")
+        if j == 4:
+            print("-----For tn:vartn-----")
+        else:
+            print("-----For tn:" + str((j + 1) * 10) + "-----")
         for i in range(5):
             itr = i + 1
             iteration_list.append(itr)
-            print("---Iteration:"+str(i+1)+"---")
-            print("Number of topics:"+str(number_topics))
-            model = runLda(corpus,number_topics,dictionary,prior,mu)
+            print("---Iteration:" + str(i + 1) + "---")
+            print("Number of topics:" + str(number_topics))
+            model = runLda(corpus, number_topics, dictionary, prior, mu)
             topic_word_prob = model.get_topics()
-            TS = calculateTs(model,datedocument,number_topics,corpus)
-            #print(TS)
-            WS = calculateWS(corpus,datedocument,vocabulary_size)
-            #print(WS)
-            significantTopics = findSignificantTopics(TS,goreNormProbability,datedocument,number_topics)
+            TS = calculateTs(model, datedocument, number_topics, corpus)
+            # print(TS)
+            WS = calculateWS(corpus, datedocument, vocabulary_size)
+            # print(WS)
+            significantTopics = findSignificantTopics(TS, goreNormProbability, datedocument, number_topics)
             print("-----Significant Topics are-----")
             print(significantTopics)
             if j == 4:
-                if number_topics<30:
+                if number_topics < 30:
                     number_topics = number_topics + 10
-            prior,avg_purity,avg_confidence = calculatePrior(WS,significantTopics,model,datedocument,goreNormProbability,vocabulary_size,number_topics,dictionary)
+            prior, avg_purity, avg_confidence = calculatePrior(WS, significantTopics, model, datedocument,
+                                                               goreNormProbability, vocabulary_size, number_topics,
+                                                               dictionary)
             avg_purity_list.append(avg_purity)
             avg_conf_list.append(avg_confidence)
-        if j == 5:
+        if j == 4:
             plt.subplot(2, 2, 3)
             plt.plot(iteration_list, avg_purity_list, marker='o', label="tn:var tn")
             plt.subplot(2, 2, 4)
             plt.plot(iteration_list, avg_conf_list, marker='o', label="tn:var tn")
         else:
             plt.subplot(2, 2, 3)
-            plt.plot(iteration_list,avg_purity_list,marker='o',label = "tn:"+str(number_topics))
+            plt.plot(iteration_list, avg_purity_list, marker='o', label="tn:" + str(number_topics))
             plt.subplot(2, 2, 4)
             plt.plot(iteration_list, avg_conf_list, marker='o', label="tn:" + str(number_topics))
     plt.subplot(2, 2, 3)
@@ -339,10 +344,22 @@ def main():
     plt.ylabel('Avg. Causality Confidence ')
     plt.xlabel('Iteration')
     plt.legend()
+
+    print("---------Result----------")
+    i = 0
+    for x in significantTopics:
+        top_words = ""
+        words_prob = model.print_topic(x,10).split("+")
+        for y in words_prob:
+            words_prob_arr = y.split("*")
+            word = words_prob_arr[1]
+            word = word.replace('"',"")
+            if "bush" not in word and "gore" not in word and "mr" not in word:
+                top_words = top_words + word+" "
+        print(str(i)+". "+top_words)
+        i = i + 1
     plt.show()
 
-        
-        
 
 if __name__ == "__main__":
     main()
