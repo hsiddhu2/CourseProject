@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 def preprocessData():
     tokenizer = RegexpTokenizer(r'\w+')
-    f = open( "data/BushGore.txt", "r" )
+    f = open( "Data/BushGore.txt", "r" )
     documents = []
     datedocument = {}
     i = 0
@@ -43,7 +43,7 @@ def preprocessData():
 
 def readStockPrice():
     goreNormalizedProbability = {}
-    with open( 'data/StockPrices.txt' ) as f:
+    with open( 'Data/StockPrices.txt' ) as f:
         for line1, line2, line3 in itertools.zip_longest( *[f] * 3 ):
             dem = line1.split()
             rep = line3.split()

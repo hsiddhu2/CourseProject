@@ -55,7 +55,7 @@ def readAbstract(root):
 Read ALL XML files from nytdata folder
 """
 def getBushGoreXMLs():
-    for path, dirs, files in os.walk( 'nytdata' ):
+    for path, dirs, files in os.walk( 'NYTData' ):
         for file in files:
             if fnmatch.fnmatch(file, '*.xml'):
                 fullname = os.path.join(path, file)
