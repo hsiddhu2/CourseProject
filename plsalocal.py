@@ -11,7 +11,7 @@ from plsa import Corpus, Pipeline, Visualize, visualize
 from plsa.pipeline import DEFAULT_PIPELINE
 from plsa.algorithms import PLSA
 
-directory = 'data/test'
+directory = 'Data/test'
 pipeline = Pipeline(*DEFAULT_PIPELINE)
 tag = "textdata"
 print(pipeline)

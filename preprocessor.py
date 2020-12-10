@@ -30,7 +30,7 @@ def readBlockParagraphs(fullname, root):
                                   body_para ):
                         publish_date = getdate( root )
                         content = str( publish_date ) + ': ' + body_para
-                        with open( "data/BushGore.txt", "a" ) as f:
+                        with open( "Data/BushGore.txt", "a" ) as f:
                             f.write( content + "\n" )
 
 
@@ -47,7 +47,7 @@ def readAbstract(root):
                 if re.search( r'\bGore(?!\.?\d) | \bBush(?!\.?\d) | \bBush,(?!\.?\d) | \bGore,(?!\.?\d)',abstract ):
                     publish_date = getdate( root )
                     content = str( publish_date ) + ': ' + abstract
-                    with open( "data/BushGore.txt", "a" ) as f:
+                    with open( "Data/BushGore.txt", "a" ) as f:
                         f.write( content + "\n" )
 
 
@@ -73,11 +73,11 @@ def getBushGoreXMLs():
 
 
 def refreshTextFile():
-    open( 'data/BushGore.txt', 'w' ).close()
+    open( 'Data/BushGore.txt', 'w' ).close()
 
 
 """
-Main Method - New York Times data Extract 
+Main Method - New York Times Data Extract 
 For Year 2000 From 1st May 2000 to 30th October 2000
 """
 def main():
